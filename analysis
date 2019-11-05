@@ -1,0 +1,131 @@
+import numpy as np 
+import pandas as pd
+import os
+import seaborn as sns
+import isbnlib
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+from tqdm import tqdm
+from progressbar import ProgressBar
+import re
+from scipy.cluster.vq import kmeans, vq
+from pylab import plot, show
+from matplotlib.lines import Line2D
+import matplotlib.colors as mcolors
+import goodreads_api_client as gr
+from sklearn.cluster import KMeans
+from sklearn import neighbors
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+import warnings
+warnings.filterwarnings("ignore")
+df = pd.read_csv('C:/Users/Admin/Desktop/goodreadsbooks/books.csv', error_bad_lines = False)
+df.index = df['bookID']
+#Finding Number of rows and columns
+print("Dataset contains {} rows and {} columns".format(df.shape[0], df.shape[1]))
+df.head()
+df.replace(to_replace='J.K. Rowling-Mary GrandPré', value = 'J.K. Rowling', inplace=True)
+df.head()
+#Taking the first 20:
+
+sns.set_context('poster')
+plt.figure(figsize=(20,15))
+books = df['title'].value_counts()[:20]
+rating = df.average_rating[:20]
+sns.barplot(x = books, y = books.index, palette='deep')
+plt.title("Most Occurring Books")
+plt.xlabel("Number of occurances")
+plt.ylabel("Books")
+plt.show()
+sns.set_context('paper')
+plt.figure(figsize=(15,10))
+ax = df.groupby('language_code')['title'].count().plot.bar()
+plt.title('Language Code')
+plt.xticks(fontsize = 15)
+for p in ax.patches:
+    ax.annotate(str(p.get_height()), (p.get_x()-0.3, p.get_height()+100))
+most_rated = df.sort_values('ratings_count', ascending = False).head(10).set_index('title')
+plt.figure(figsize=(15,10))
+sns.barplot(most_rated['ratings_count'], most_rated.index, palette='rocket')
+sns.set_context('talk')
+most_books = df.groupby('authors')['title'].count().reset_index().sort_values('title', ascending=False).head(10).set_index('authors')
+plt.figure(figsize=(15,10))
+ax = sns.barplot(most_books['title'], most_books.index, palette='icefire_r')
+ax.set_title("Top 10 authors with most books")
+ax.set_xlabel("Total number of books")
+for i in ax.patches:
+    ax.text(i.get_width()+.3, i.get_y()+0.5, str(round(i.get_width())), fontsize = 10, color = 'k')
+#Finding the top 15 authors with the most number of books
+df['authors'].value_counts().head(10)
+high_rated_author = df[df['average_rating']>=4.3]
+high_rated_author = high_rated_author.groupby('authors')['title'].count().reset_index().sort_values('title', ascending = False).head(10).set_index('authors')
+plt.figure(figsize=(15,10))
+ax = sns.barplot(high_rated_author['title'], high_rated_author.index, palette='Set2')
+ax.set_xlabel("Number of Books")
+ax.set_ylabel("Authors")
+for i in ax.patches:
+    ax.text(i.get_width()+.3, i.get_y()+0.5, str(round(i.get_width())), fontsize = 10, color = 'k')
+
+def segregation(data):
+    values = []
+    for val in data.average_rating:
+        if val>=0 and val<=1:
+            values.append("Between 0 and 1")
+        elif val>1 and val<=2:
+            values.append("Between 1 and 2")
+        elif val>2 and val<=3:
+            values.append("Between 2 and 3")
+        elif val>3 and val<=4:
+            values.append("Between 3 and 4")
+        elif val>4 and val<=5:
+            values.append("Between 4 and 5")
+        else:
+            values.append("NaN")
+    print(len(values))
+    return values
+df.average_rating.isnull().value_counts()
+df.dropna(0, inplace=True)
+#Removing Any null values
+plt.figure(figsize=(10,10))
+rating= df.average_rating.astype(float)
+sns.distplot(rating, bins=20)
+#Checking for any relation between them.
+plt.figure(figsize=(15,10))
+df.dropna(0, inplace=True)
+sns.set_context('paper')
+ax =sns.jointplot(x="average_rating",y='text_reviews_count', kind='scatter',  data= df[['text_reviews_count', 'average_rating']])
+ax.set_axis_labels("Average Rating", "Text Review Count")
+plt.show()
+trial = df[~(df['text_reviews_count']>5000)]
+#Checking for any relation between them.
+plt.figure(figsize=(15,10))
+df.dropna(0, inplace=True)
+sns.set_context('paper')
+ax =sns.jointplot(x="average_rating",y='text_reviews_count', kind='scatter',  data= trial, color = 'green')
+ax.set_axis_labels("Average Rating", "Text Review Count")
+plt.show()
+plt.figure(figsize=(15,10))
+sns.set_context('paper')
+ax = sns.jointplot(x="average_rating", y="# num_pages", data = df, color = 'crimson')
+ax.set_axis_labels("Average Rating", "Number of Pages")
+plt.figure(figsize=(15,10))
+sns.set_context('paper')
+ax = sns.jointplot(x="average_rating", y="# num_pages", data = df, color = 'crimson')
+ax.set_axis_labels("Average Rating", "Number of Pages")
+trial = df[~(df['# num_pages']>1000)]
+ax = sns.jointplot(x="average_rating", y="# num_pages", data = trial, color = 'darkcyan')
+ax.set_axis_labels("Average Rating", "Number of Pages")
+sns.set_context('paper')
+ax = sns.jointplot(x="average_rating", y="ratings_count", data = df, color = 'blueviolet')
+ax.set_axis_labels("Average Rating", "Ratings Count")
+trial = df[~(df.ratings_count>2000000)]
+sns.set_context('paper')
+ax = sns.jointplot(x="average_rating", y="ratings_count", data = trial, color = 'brown')
+ax.set_axis_labels("Average Rating", "Ratings Count")
+most_text = df.sort_values('text_reviews_count', ascending = False).head(10).set_index('title')
+plt.figure(figsize=(15,10))
+sns.set_context('poster')
+ax = sns.barplot(most_text['text_reviews_count'], most_text.index, palette='magma')
+for i in ax.patches:
+    ax.text(i.get_width()+2, i.get_y()+0.5,str(round(i.get_width())), fontsize=10,color='black')
+plt.show()
