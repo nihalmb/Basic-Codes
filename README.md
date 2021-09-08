@@ -1,3 +1,1 @@
-# rock
-All codes are runned at jupyter notebook
-(GOOGLE COLAB)
+All codes are runned at jupyter notebook and google colab.
