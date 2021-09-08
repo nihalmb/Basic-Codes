@@ -1,1 +1,1 @@
-All codes are runned at jupyter notebook and google colab.
+All codes are runned at jupyter notebook.
